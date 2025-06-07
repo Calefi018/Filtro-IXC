@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Ordens de Serviço</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; background-color: #f0f2f5; color: #1c1e21; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: #ffffff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #dddfe2; padding-bottom: 15px; margin-bottom: 15px; }
+        h1 { color: #1877f2; margin: 0; font-size: 24px; }
+        #btn-atualizar { background-color: #42b72a; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; transition: background-color 0.2s, transform 0.2s; }
+        #btn-atualizar:hover { background-color: #36a420; }
+        #btn-atualizar:active { transform: scale(0.98); }
+        #btn-atualizar.loading { background-color: #ffc107; cursor: wait; animation: pulse 1.5s infinite; }
+        #os-list { list-style: none; padding: 0; }
+        .os-item { display: grid; grid-template-columns: 2fr 1fr 3fr 1fr auto; align-items: center; gap: 10px; padding: 12px 8px; border-bottom: 1px solid #dddfe2; transition: background-color 0.3s; }
+        .os-item:hover { background-color: #f0f2f5; }
+        .os-item:last-child { border-bottom: none; }
+        .os-item span { padding: 0 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .resumo { font-weight: bold; color: #0d6efd; }
+        .status-message { text-align: center; color: #8a8d91; padding: 20px; font-style: italic; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Ordens de Serviço - Equipe Externa (D1)</h1>
+            <button id="btn-atualizar" title="Clique para atualizar a lista">Atualizar</button>
+        </div>
+        <ul id="os-list">
+            </ul>
+        <div id="status" class="status-message"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const osList = document.getElementById('os-list');
+            const statusDiv = document.getElementById('status');
+            const updateButton = document.getElementById('btn-atualizar');
+
+            // ### PREENCHER AQUI ###
+            // Coloque o IP da máquina onde o servidor Python (app.py) está rodando.
+            const backend_url = 'http://192.168.1.10:5000/api/ordens';
+
+            async function fetchOrdens() {
+                statusDiv.textContent = 'Buscando e processando as Ordens de Serviço...';
+                osList.innerHTML = '';
+                updateButton.textContent = 'Carregando...';
+                updateButton.classList.add('loading');
+                updateButton.disabled = true;
+
+                try {
+                    const response = await fetch(backend_url);
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `Erro do Servidor: ${response.statusText}`);
+                    }
+                    const ordens = await response.json();
+
+                    statusDiv.textContent = '';
+                    if (ordens.length === 0) {
+                        statusDiv.textContent = 'Nenhuma ordem de serviço encontrada para os filtros aplicados.';
+                    } else {
+                        ordens.forEach(os => {
+                            const li = document.createElement('li');
+                            li.className = 'os-item';
+                            li.innerHTML = `
+                                <span class="cliente" title="${os.cliente}">${os.cliente}</span>
+                                <span class="bairro" title="${os.bairro}">${os.bairro}</span>
+                                <span class="resumo" title="${os.resumo}">${os.resumo}</span>
+                                <span class="whatsapp">${os.whatsapp}</span>
+                                <span>D1</span>
+                            `;
+                            osList.appendChild(li);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Falha ao buscar ordens:', error);
+                    statusDiv.textContent = `Erro ao carregar dados: ${error.message}`;
+                } finally {
+                    updateButton.textContent = 'Atualizar';
+                    updateButton.classList.remove('loading');
+                    updateButton.disabled = false;
+                }
+            }
+            
+            updateButton.addEventListener('click', fetchOrdens);
+            fetchOrdens();
+            setInterval(fetchOrdens, 300000); // Atualiza a cada 5 minutos
+        });
+    </script>
+</body>
+</html>
